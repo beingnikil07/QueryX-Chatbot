@@ -1,9 +1,6 @@
 package com.chatbot.Controller;
 import com.chatbot.Services.SummaryService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api")
@@ -16,7 +13,7 @@ public class SummaryController {
     }
 
     @PostMapping("/chat")
-    public String chat(@RequestBody String message){
-        return summaryService.chat(message);
+    public String chat(@RequestBody String message, @RequestParam String conversationId){
+        return summaryService.chat(message,conversationId);
     }
 }
