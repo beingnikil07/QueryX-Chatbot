@@ -11,40 +11,52 @@ public class ChatMessage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String conversationId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "conversation_id",
+            nullable = false
+    )
+    private Conversation conversation;
 
     @Column(nullable = false)
     private String role;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(
+            columnDefinition = "TEXT",
+            nullable = false
+    )
     private String content;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+
     public ChatMessage() {
     }
 
-    public ChatMessage(String conversationId,
-                       String role,
-                       String content) {
-        this.conversationId = conversationId;
+
+    public ChatMessage(
+            Conversation conversation,
+            String role,
+            String content
+    ) {
+        this.conversation = conversation;
         this.role = role;
         this.content = content;
         this.createdAt = LocalDateTime.now();
     }
 
+
     public Long getId() {
         return id;
     }
 
-    public String getConversationId() {
-        return conversationId;
+    public Conversation getConversation() {
+        return conversation;
     }
 
-    public void setConversationId(String conversationId) {
-        this.conversationId = conversationId;
+    public void setConversation(Conversation conversation) {
+        this.conversation = conversation;
     }
 
     public String getRole() {
@@ -65,5 +77,9 @@ public class ChatMessage {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

@@ -1,44 +1,18 @@
-const messageInput =
-    document.getElementById("messageInput");
-
-const sendBtn =
-    document.getElementById("sendBtn");
-
-const messages =
-    document.getElementById("messages");
-
-const newChatBtn =
-    document.getElementById("newChatBtn");
-
-const conversationList =
-    document.getElementById("conversationList");
-
-const conversationIdText =
-    document.getElementById("conversationIdText");
-
-const chatTitle =
-    document.getElementById("chatTitle");
-
-const themeBtn =
-    document.getElementById("themeBtn");
-
-const clearBtn =
-    document.getElementById("clearBtn");
-
-const characterCount =
-    document.getElementById("characterCount");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
+const messages = document.getElementById("messages");
+const newChatBtn = document.getElementById("newChatBtn");
+const conversationList = document.getElementById("conversationList");
+const conversationIdText = document.getElementById("conversationIdText");
+const chatTitle = document.getElementById("chatTitle");
+const themeBtn = document.getElementById("themeBtn");
+const clearBtn = document.getElementById("clearBtn");
+const characterCount = document.getElementById("characterCount");
 
 
 /* =====================================
    STATE
 ===================================== */
-
-let conversations =
-    JSON.parse(
-        localStorage.getItem(
-            "queryx-conversations"
-        )
-    ) || [];
 
 let currentConversationId = null;
 
@@ -47,66 +21,80 @@ let currentConversationId = null;
    CREATE NEW QUERY
 ===================================== */
 
-function createNewChat() {
+async function createNewChat() {
 
-    currentConversationId =
-        crypto.randomUUID();
+    try {
 
-    const conversation = {
+        const response = await fetch(
+            "/api/conversations",
+            {
+                method: "POST"
+            }
+        );
 
-        id: currentConversationId,
+        if (!response.ok) {
+            throw new Error(
+                `Unable to create conversation: ${response.status}`
+            );
+        }
 
-        title: "New Customer Query"
-    };
+        const conversation = await response.json();
 
+        currentConversationId = conversation.id;
 
-    conversations.unshift(
-        conversation
-    );
+        clearMessages();
 
+        updateHeader(conversation);
 
-    saveConversations();
+        await loadConversations();
 
-    renderConversationList();
+        messageInput.value = "";
 
-    clearMessages();
+        updateCharacterCount();
 
-    updateHeader(
-        conversation
-    );
+        autoResize();
 
-    messageInput.focus();
+        messageInput.focus();
+
+    } catch (error) {
+
+        console.error(
+            "Create conversation error:",
+            error
+        );
+    }
 }
 
 
 /* =====================================
-   SEND QUERY
+   SEND CUSTOMER QUERY
 ===================================== */
 
 async function sendMessage() {
 
-    const text =
-        messageInput.value.trim();
-
+    const text = messageInput.value.trim();
 
     if (!text) {
-
         return;
     }
 
 
+    /*
+     If no conversation exists,
+     create one first.
+    */
+
     if (!currentConversationId) {
 
-        createNewChat();
+        await createNewChat();
+
+        if (!currentConversationId) {
+            return;
+        }
     }
 
 
     removeWelcome();
-
-
-    /*
-     Display original customer query
-    */
 
     addMessage(
         text,
@@ -121,68 +109,42 @@ async function sendMessage() {
     autoResize();
 
 
-    /*
-     Use customer query as sidebar title
-    */
-
-    updateConversationTitle(
-        text
-    );
-
-
-    const typingElement =
-        showTyping();
-
+    const typingElement = showTyping();
 
     sendBtn.disabled = true;
 
 
     try {
 
-        /*
-         Existing Spring Boot API
-        */
+        const response = await fetch(
 
-        const response =
-            await fetch(
+            `/api/chat?conversationId=${
+                encodeURIComponent(
+                    currentConversationId
+                )
+            }`,
 
-                `/api/chat?conversationId=${
-                    encodeURIComponent(
-                        currentConversationId
-                    )
-                }`,
+            {
+                method: "POST",
 
-                {
+                headers: {
+                    "Content-Type": "text/plain"
+                },
 
-                    method: "POST",
-
-                    headers: {
-
-                        "Content-Type":
-                            "text/plain"
-                    },
-
-                    body: text
-                }
-            );
+                body: text
+            }
+        );
 
 
         if (!response.ok) {
 
             throw new Error(
-                `Server returned ${
-                    response.status
-                }`
+                `Server returned ${response.status}`
             );
         }
 
 
-        /*
-         AI generated summary
-        */
-
-        const summary =
-            await response.text();
+        const summary = await response.text();
 
 
         typingElement.remove();
@@ -194,15 +156,29 @@ async function sendMessage() {
         );
 
 
+        /*
+         Backend updates conversation title,
+         so reload sidebar from MySQL.
+        */
+
+        await loadConversations();
+
+
+        /*
+         Update header using fresh conversation
+         information.
+        */
+
+        await updateCurrentConversationHeader();
+
+
     } catch (error) {
 
         typingElement.remove();
 
 
         addMessage(
-
             "Unable to generate summary. Please try again.",
-
             "assistant"
         );
 
@@ -222,7 +198,111 @@ async function sendMessage() {
 
 
 /* =====================================
-   LOAD QUERY HISTORY FROM MYSQL
+   LOAD ALL CONVERSATIONS FROM MYSQL
+===================================== */
+
+async function loadConversations() {
+
+    try {
+
+        const response = await fetch(
+            "/api/conversations"
+        );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Unable to load conversations: ${response.status}`
+            );
+        }
+
+
+        const conversations =
+            await response.json();
+
+
+        conversationList.innerHTML = "";
+
+
+        conversations.forEach(
+            conversation => {
+
+                const item =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                item.className =
+                    "conversation";
+
+
+                if (
+                    conversation.id ===
+                    currentConversationId
+                ) {
+
+                    item.classList.add(
+                        "active"
+                    );
+                }
+
+
+                item.textContent =
+                    conversation.title;
+
+
+                item.onclick =
+                    async () => {
+
+                        currentConversationId =
+                            conversation.id;
+
+
+                        updateHeader(
+                            conversation
+                        );
+
+
+                        await loadConversation(
+                            conversation.id
+                        );
+
+
+                        /*
+                         Re-render so selected item
+                         becomes active.
+                        */
+
+                        await loadConversations();
+                    };
+
+
+                conversationList.appendChild(
+                    item
+                );
+            }
+        );
+
+
+        return conversations;
+
+
+    } catch (error) {
+
+        console.error(
+            "Sidebar loading error:",
+            error
+        );
+
+        return [];
+    }
+}
+
+
+/* =====================================
+   LOAD SELECTED CONVERSATION MESSAGES
 ===================================== */
 
 async function loadConversation(
@@ -238,21 +318,20 @@ async function loadConversation(
 
     try {
 
-        const response =
-            await fetch(
+        const response = await fetch(
 
-                `/api/chat/${
-                    encodeURIComponent(
-                        conversationId
-                    )
-                }/messages`
-            );
+            `/api/chat/${
+                encodeURIComponent(
+                    conversationId
+                )
+            }/messages`
+        );
 
 
         if (!response.ok) {
 
             throw new Error(
-                "Unable to load query history"
+                `Unable to load history: ${response.status}`
             );
         }
 
@@ -307,11 +386,66 @@ async function loadConversation(
         );
 
 
+        messages.innerHTML = "";
+
+
         addMessage(
-
             "Unable to load previous query.",
-
             "assistant"
+        );
+    }
+}
+
+
+/* =====================================
+   UPDATE CURRENT HEADER
+===================================== */
+
+async function updateCurrentConversationHeader() {
+
+    if (!currentConversationId) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/conversations"
+            );
+
+
+        if (!response.ok) {
+            return;
+        }
+
+
+        const conversations =
+            await response.json();
+
+
+        const conversation =
+            conversations.find(
+                conversation =>
+                    conversation.id ===
+                    currentConversationId
+            );
+
+
+        if (conversation) {
+
+            updateHeader(
+                conversation
+            );
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Header update error:",
+            error
         );
     }
 }
@@ -386,7 +520,7 @@ function addMessage(
 
 
 /* =====================================
-   TYPING / PROCESSING INDICATOR
+   TYPING INDICATOR
 ===================================== */
 
 function showTyping() {
@@ -408,11 +542,9 @@ function showTyping() {
         </div>
 
         <div class="message-content typing">
-
             <span></span>
             <span></span>
             <span></span>
-
         </div>
 
     `;
@@ -431,126 +563,6 @@ function showTyping() {
 
 
 /* =====================================
-   CONVERSATION TITLE
-===================================== */
-
-function updateConversationTitle(
-    customerQuery
-) {
-
-    const conversation =
-        conversations.find(
-
-            conversation =>
-                conversation.id ===
-                currentConversationId
-        );
-
-
-    if (!conversation) {
-
-        return;
-    }
-
-
-    if (
-        conversation.title ===
-        "New Customer Query"
-    ) {
-
-        conversation.title =
-
-            customerQuery.length > 32
-
-                ? customerQuery.substring(
-                    0,
-                    32
-                ) + "..."
-
-                : customerQuery;
-
-
-        saveConversations();
-
-        renderConversationList();
-
-        updateHeader(
-            conversation
-        );
-    }
-}
-
-
-/* =====================================
-   SIDEBAR
-===================================== */
-
-function renderConversationList() {
-
-    conversationList.innerHTML =
-        "";
-
-
-    conversations.forEach(
-        conversation => {
-
-
-            const item =
-                document.createElement(
-                    "div"
-                );
-
-
-            item.className =
-                "conversation";
-
-
-            if (
-                conversation.id ===
-                currentConversationId
-            ) {
-
-                item.classList.add(
-                    "active"
-                );
-            }
-
-
-            item.textContent =
-                conversation.title;
-
-
-            item.onclick =
-                async () => {
-
-
-                    currentConversationId =
-                        conversation.id;
-
-
-                    renderConversationList();
-
-
-                    updateHeader(
-                        conversation
-                    );
-
-
-                    await loadConversation(
-                        conversation.id
-                    );
-                };
-
-
-            conversationList.appendChild(
-                item
-            );
-        }
-    );
-}
-
-
-/* =====================================
    HEADER
 ===================================== */
 
@@ -565,23 +577,6 @@ function updateHeader(
     conversationIdText.textContent =
         "Query ID: " +
         conversation.id;
-}
-
-
-/* =====================================
-   LOCAL STORAGE
-===================================== */
-
-function saveConversations() {
-
-    localStorage.setItem(
-
-        "queryx-conversations",
-
-        JSON.stringify(
-            conversations
-        )
-    );
 }
 
 
@@ -606,11 +601,9 @@ function clearMessages() {
             </h1>
 
             <p>
-
                 Paste a customer's food delivery
                 query and QueryX will generate
                 a short, clear support summary.
-
             </p>
 
 
@@ -694,10 +687,13 @@ function clearMessages() {
             </div>
 
         </div>
-
     `;
 }
 
+
+/* =====================================
+   REMOVE WELCOME
+===================================== */
 
 function removeWelcome() {
 
@@ -759,11 +755,8 @@ function autoResize() {
     messageInput.style.height =
 
         Math.min(
-
             messageInput.scrollHeight,
-
             160
-
         ) + "px";
 }
 
@@ -794,9 +787,7 @@ themeBtn.onclick = () => {
         document.body.classList.contains(
             "dark"
         )
-
             ? "dark"
-
             : "light";
 
 
@@ -820,23 +811,20 @@ if (
 
 
 /* =====================================
-   CLEAR LOCAL QUERIES
+   CLEAR UI
 ===================================== */
 
 clearBtn.onclick = () => {
 
-    conversations = [];
+    /*
+     This currently clears only the UI.
 
-    currentConversationId = null;
+     It does NOT delete conversations
+     from MySQL.
+    */
 
-
-    localStorage.removeItem(
-        "queryx-conversations"
-    );
-
-
-    conversationList.innerHTML =
-        "";
+    currentConversationId =
+        null;
 
 
     chatTitle.textContent =
@@ -906,38 +894,55 @@ messageInput.addEventListener(
 
 async function initializeApp() {
 
-    if (
-        conversations.length > 0
-    ) {
+    /*
+     Get previous conversations
+     directly from MySQL.
+    */
 
-        const conversation =
+    const conversations =
+        await loadConversations();
+
+
+    /*
+     If conversations exist,
+     automatically open latest one.
+    */
+
+    if (conversations.length > 0) {
+
+        const latestConversation =
             conversations[0];
 
 
         currentConversationId =
-            conversation.id;
+            latestConversation.id;
 
 
         updateHeader(
-            conversation
+            latestConversation
         );
 
-
-        renderConversationList();
-
-
-        /*
-         Restore messages from MySQL
-        */
 
         await loadConversation(
-            conversation.id
+            latestConversation.id
         );
 
+
+        await loadConversations();
 
     } else {
 
-        createNewChat();
+        /*
+         Don't create an empty DB row
+         automatically.
+
+         Just show welcome screen.
+        */
+
+        currentConversationId =
+            null;
+
+        clearMessages();
     }
 }
 
