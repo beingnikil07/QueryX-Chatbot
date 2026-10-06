@@ -16,7 +16,7 @@ public class SummaryController {
     }
 
     @PostMapping("/chat")
-    public String summarize(@RequestBody String ticket){
-        return summaryService.summarize(ticket);
+    public String chat(@RequestBody String message){
+        return summaryService.chat(message);
     }
 }
