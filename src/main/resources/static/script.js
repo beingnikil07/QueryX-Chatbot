@@ -1,10 +1,17 @@
-const messageInput = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
-const messages = document.getElementById("messages");
-const welcome = document.getElementById("welcome");
+const messageInput =
+    document.getElementById("messageInput");
 
-const newChatBtn = document.getElementById("newChatBtn");
-const conversationList = document.getElementById("conversationList");
+const sendBtn =
+    document.getElementById("sendBtn");
+
+const messages =
+    document.getElementById("messages");
+
+const newChatBtn =
+    document.getElementById("newChatBtn");
+
+const conversationList =
+    document.getElementById("conversationList");
 
 const conversationIdText =
     document.getElementById("conversationIdText");
@@ -18,27 +25,45 @@ const themeBtn =
 const clearBtn =
     document.getElementById("clearBtn");
 
+const characterCount =
+    document.getElementById("characterCount");
+
+
+/* =====================================
+   STATE
+===================================== */
 
 let conversations =
-    JSON.parse(localStorage.getItem("queryx-conversations")) || [];
+    JSON.parse(
+        localStorage.getItem(
+            "queryx-conversations"
+        )
+    ) || [];
 
 let currentConversationId = null;
 
 
-/* ==============================
-   CREATE NEW CHAT
-============================== */
+/* =====================================
+   CREATE NEW QUERY
+===================================== */
 
 function createNewChat() {
 
-    currentConversationId = crypto.randomUUID();
+    currentConversationId =
+        crypto.randomUUID();
 
     const conversation = {
+
         id: currentConversationId,
-        title: "New Conversation"
+
+        title: "New Customer Query"
     };
 
-    conversations.unshift(conversation);
+
+    conversations.unshift(
+        conversation
+    );
+
 
     saveConversations();
 
@@ -46,126 +71,335 @@ function createNewChat() {
 
     clearMessages();
 
-    updateHeader(conversation);
+    updateHeader(
+        conversation
+    );
+
+    messageInput.focus();
 }
 
 
-/* ==============================
-   SEND MESSAGE
-============================== */
+/* =====================================
+   SEND QUERY
+===================================== */
 
 async function sendMessage() {
 
-    const text = messageInput.value.trim();
+    const text =
+        messageInput.value.trim();
+
 
     if (!text) {
+
         return;
     }
 
+
     if (!currentConversationId) {
+
         createNewChat();
     }
 
+
     removeWelcome();
 
-    addMessage(text, "user");
+
+    /*
+     Display original customer query
+    */
+
+    addMessage(
+        text,
+        "user"
+    );
+
 
     messageInput.value = "";
+
+    updateCharacterCount();
+
     autoResize();
 
-    updateConversationTitle(text);
 
-    const typingElement = showTyping();
+    /*
+     Use customer query as sidebar title
+    */
+
+    updateConversationTitle(
+        text
+    );
+
+
+    const typingElement =
+        showTyping();
+
 
     sendBtn.disabled = true;
 
+
     try {
 
-        const response = await fetch(
-            `/api/chat?conversationId=${encodeURIComponent(currentConversationId)}`,
-            {
-                method: "POST",
+        /*
+         Existing Spring Boot API
+        */
 
-                headers: {
-                    "Content-Type": "text/plain"
-                },
+        const response =
+            await fetch(
 
-                body: text
-            }
-        );
+                `/api/chat?conversationId=${
+                    encodeURIComponent(
+                        currentConversationId
+                    )
+                }`,
+
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "text/plain"
+                    },
+
+                    body: text
+                }
+            );
+
 
         if (!response.ok) {
+
             throw new Error(
-                `Server returned ${response.status}`
+                `Server returned ${
+                    response.status
+                }`
             );
         }
 
-        const answer = await response.text();
+
+        /*
+         AI generated summary
+        */
+
+        const summary =
+            await response.text();
+
 
         typingElement.remove();
 
-        addMessage(answer, "assistant");
+
+        addMessage(
+            summary,
+            "assistant"
+        );
+
 
     } catch (error) {
 
         typingElement.remove();
 
+
         addMessage(
-            "Sorry, I couldn't connect to the server.",
+
+            "Unable to generate summary. Please try again.",
+
             "assistant"
         );
 
-        console.error(error);
+
+        console.error(
+            "QueryX API error:",
+            error
+        );
 
     } finally {
 
         sendBtn.disabled = false;
+
         messageInput.focus();
     }
 }
 
 
-/* ==============================
+/* =====================================
+   LOAD QUERY HISTORY FROM MYSQL
+===================================== */
+
+async function loadConversation(
+    conversationId
+) {
+
+    currentConversationId =
+        conversationId;
+
+
+    messages.innerHTML = "";
+
+
+    try {
+
+        const response =
+            await fetch(
+
+                `/api/chat/${
+                    encodeURIComponent(
+                        conversationId
+                    )
+                }/messages`
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Unable to load query history"
+            );
+        }
+
+
+        const history =
+            await response.json();
+
+
+        if (history.length === 0) {
+
+            clearMessages();
+
+            return;
+        }
+
+
+        history.forEach(
+            chatMessage => {
+
+                if (
+                    chatMessage.role ===
+                    "USER"
+                ) {
+
+                    addMessage(
+                        chatMessage.content,
+                        "user"
+                    );
+
+                } else if (
+                    chatMessage.role ===
+                    "ASSISTANT"
+                ) {
+
+                    addMessage(
+                        chatMessage.content,
+                        "assistant"
+                    );
+                }
+            }
+        );
+
+
+        scrollBottom();
+
+
+    } catch (error) {
+
+        console.error(
+            "History loading error:",
+            error
+        );
+
+
+        addMessage(
+
+            "Unable to load previous query.",
+
+            "assistant"
+        );
+    }
+}
+
+
+/* =====================================
    ADD MESSAGE
-============================== */
+===================================== */
 
-function addMessage(text, role) {
+function addMessage(
+    text,
+    role
+) {
 
-    const message = document.createElement("div");
+    const message =
+        document.createElement(
+            "div"
+        );
 
-    message.className = `message ${role}`;
 
-    const avatar = document.createElement("div");
+    message.className =
+        `message ${role}`;
 
-    avatar.className = "message-avatar";
+
+    const avatar =
+        document.createElement(
+            "div"
+        );
+
+
+    avatar.className =
+        "message-avatar";
+
 
     avatar.textContent =
-        role === "user" ? "N" : "Q";
+        role === "user"
+            ? "C"
+            : "Q";
 
-    const content = document.createElement("div");
 
-    content.className = "message-content";
+    const content =
+        document.createElement(
+            "div"
+        );
 
-    content.textContent = text;
 
-    message.appendChild(avatar);
-    message.appendChild(content);
+    content.className =
+        "message-content";
 
-    messages.appendChild(message);
+
+    content.textContent =
+        text;
+
+
+    message.appendChild(
+        avatar
+    );
+
+
+    message.appendChild(
+        content
+    );
+
+
+    messages.appendChild(
+        message
+    );
+
 
     scrollBottom();
 }
 
 
-/* ==============================
-   TYPING INDICATOR
-============================== */
+/* =====================================
+   TYPING / PROCESSING INDICATOR
+===================================== */
 
 function showTyping() {
 
-    const message = document.createElement("div");
+    const message =
+        document.createElement(
+            "div"
+        );
 
-    message.className = "message assistant";
+
+    message.className =
+        "message assistant";
+
 
     message.innerHTML = `
 
@@ -174,148 +408,290 @@ function showTyping() {
         </div>
 
         <div class="message-content typing">
+
             <span></span>
             <span></span>
             <span></span>
+
         </div>
 
     `;
 
-    messages.appendChild(message);
+
+    messages.appendChild(
+        message
+    );
+
 
     scrollBottom();
+
 
     return message;
 }
 
 
-/* ==============================
+/* =====================================
    CONVERSATION TITLE
-============================== */
+===================================== */
 
-function updateConversationTitle(message) {
+function updateConversationTitle(
+    customerQuery
+) {
 
     const conversation =
         conversations.find(
-            c => c.id === currentConversationId
+
+            conversation =>
+                conversation.id ===
+                currentConversationId
         );
 
+
     if (!conversation) {
+
         return;
     }
 
-    if (conversation.title === "New Conversation") {
+
+    if (
+        conversation.title ===
+        "New Customer Query"
+    ) {
 
         conversation.title =
-            message.length > 30
-                ? message.substring(0, 30) + "..."
-                : message;
+
+            customerQuery.length > 32
+
+                ? customerQuery.substring(
+                    0,
+                    32
+                ) + "..."
+
+                : customerQuery;
+
 
         saveConversations();
 
         renderConversationList();
 
-        updateHeader(conversation);
+        updateHeader(
+            conversation
+        );
     }
 }
 
 
-/* ==============================
-   RENDER SIDEBAR
-============================== */
+/* =====================================
+   SIDEBAR
+===================================== */
 
 function renderConversationList() {
 
-    conversationList.innerHTML = "";
+    conversationList.innerHTML =
+        "";
 
-    conversations.forEach(conversation => {
 
-        const item = document.createElement("div");
+    conversations.forEach(
+        conversation => {
 
-        item.className = "conversation";
 
-        if (conversation.id === currentConversationId) {
-            item.classList.add("active");
-        }
+            const item =
+                document.createElement(
+                    "div"
+                );
 
-        item.textContent = conversation.title;
 
-        item.onclick = () => {
+            item.className =
+                "conversation";
 
-            currentConversationId =
-                conversation.id;
 
-            renderConversationList();
+            if (
+                conversation.id ===
+                currentConversationId
+            ) {
 
-            updateHeader(conversation);
+                item.classList.add(
+                    "active"
+                );
+            }
 
-            /*
-             Later we will call:
-             GET /api/conversations/{id}/messages
 
-             to load old messages.
-            */
+            item.textContent =
+                conversation.title;
 
-            clearMessages();
 
-            addMessage(
-                "Conversation selected. Message history API can be connected here.",
-                "assistant"
+            item.onclick =
+                async () => {
+
+
+                    currentConversationId =
+                        conversation.id;
+
+
+                    renderConversationList();
+
+
+                    updateHeader(
+                        conversation
+                    );
+
+
+                    await loadConversation(
+                        conversation.id
+                    );
+                };
+
+
+            conversationList.appendChild(
+                item
             );
-        };
-
-        conversationList.appendChild(item);
-    });
-}
-
-
-/* ==============================
-   HEADER
-============================== */
-
-function updateHeader(conversation) {
-
-    chatTitle.textContent =
-        conversation.title;
-
-    conversationIdText.textContent =
-        "ID: " + conversation.id;
-}
-
-
-/* ==============================
-   STORAGE
-============================== */
-
-function saveConversations() {
-
-    localStorage.setItem(
-        "queryx-conversations",
-        JSON.stringify(conversations)
+        }
     );
 }
 
 
-/* ==============================
-   CLEAR UI
-============================== */
+/* =====================================
+   HEADER
+===================================== */
+
+function updateHeader(
+    conversation
+) {
+
+    chatTitle.textContent =
+        conversation.title;
+
+
+    conversationIdText.textContent =
+        "Query ID: " +
+        conversation.id;
+}
+
+
+/* =====================================
+   LOCAL STORAGE
+===================================== */
+
+function saveConversations() {
+
+    localStorage.setItem(
+
+        "queryx-conversations",
+
+        JSON.stringify(
+            conversations
+        )
+    );
+}
+
+
+/* =====================================
+   WELCOME SCREEN
+===================================== */
 
 function clearMessages() {
 
     messages.innerHTML = `
 
-        <div class="welcome" id="welcome">
+        <div
+            class="welcome"
+            id="welcome">
 
-            <div class="welcome-logo">
+            <div class="welcome-icon">
                 Q
             </div>
 
-            <h1>Welcome to QueryX</h1>
+            <h1>
+                Customer Query Summarizer
+            </h1>
 
             <p>
-                Your intelligent AI assistant.
-                Ask me anything.
+
+                Paste a customer's food delivery
+                query and QueryX will generate
+                a short, clear support summary.
+
             </p>
+
+
+            <div class="feature-cards">
+
+
+                <button
+                    class="feature-card"
+                    onclick="useSuggestion(
+                    'My order was supposed to arrive 45 minutes ago but it is still showing preparing and I cannot contact the delivery partner.'
+                    )">
+
+                    <span class="feature-icon">
+                        ⏱
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Delayed Order
+                        </strong>
+
+                        <small>
+                            Try an example
+                        </small>
+
+                    </div>
+
+                </button>
+
+
+                <button
+                    class="feature-card"
+                    onclick="useSuggestion(
+                    'I ordered two burgers and fries but received only one burger and the fries are missing.'
+                    )">
+
+                    <span class="feature-icon">
+                        🍔
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Missing Items
+                        </strong>
+
+                        <small>
+                            Try an example
+                        </small>
+
+                    </div>
+
+                </button>
+
+
+                <button
+                    class="feature-card"
+                    onclick="useSuggestion(
+                    'My payment was deducted but the order failed and I have not received my refund yet.'
+                    )">
+
+                    <span class="feature-icon">
+                        ₹
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Payment Issue
+                        </strong>
+
+                        <small>
+                            Try an example
+                        </small>
+
+                    </div>
+
+                </button>
+
+            </div>
 
         </div>
 
@@ -326,17 +702,75 @@ function clearMessages() {
 function removeWelcome() {
 
     const welcomeElement =
-        document.getElementById("welcome");
+        document.getElementById(
+            "welcome"
+        );
+
 
     if (welcomeElement) {
+
         welcomeElement.remove();
     }
 }
 
 
-/* ==============================
+/* =====================================
+   EXAMPLE QUERY
+===================================== */
+
+function useSuggestion(
+    text
+) {
+
+    messageInput.value =
+        text;
+
+
+    updateCharacterCount();
+
+    autoResize();
+
+    messageInput.focus();
+}
+
+
+/* =====================================
+   CHARACTER COUNTER
+===================================== */
+
+function updateCharacterCount() {
+
+    characterCount.textContent =
+        messageInput.value.length +
+        " characters";
+}
+
+
+/* =====================================
+   AUTO RESIZE
+===================================== */
+
+function autoResize() {
+
+    messageInput.style.height =
+        "auto";
+
+
+    messageInput.style.height =
+
+        Math.min(
+
+            messageInput.scrollHeight,
+
+            160
+
+        ) + "px";
+}
+
+
+/* =====================================
    SCROLL
-============================== */
+===================================== */
 
 function scrollBottom() {
 
@@ -345,63 +779,49 @@ function scrollBottom() {
 }
 
 
-/* ==============================
-   TEXTAREA RESIZE
-============================== */
-
-function autoResize() {
-
-    messageInput.style.height = "auto";
-
-    messageInput.style.height =
-        Math.min(
-            messageInput.scrollHeight,
-            150
-        ) + "px";
-}
-
-
-/* ==============================
-   SUGGESTIONS
-============================== */
-
-function useSuggestion(text) {
-
-    messageInput.value = text;
-
-    sendMessage();
-}
-
-
-/* ==============================
+/* =====================================
    THEME
-============================== */
+===================================== */
 
 themeBtn.onclick = () => {
 
-    document.body.classList.toggle("dark");
+    document.body.classList.toggle(
+        "dark"
+    );
+
+
+    const theme =
+        document.body.classList.contains(
+            "dark"
+        )
+
+            ? "dark"
+
+            : "light";
+
 
     localStorage.setItem(
         "queryx-theme",
-        document.body.classList.contains("dark")
-            ? "dark"
-            : "light"
+        theme
     );
 };
 
 
 if (
-    localStorage.getItem("queryx-theme")
-    === "dark"
+    localStorage.getItem(
+        "queryx-theme"
+    ) === "dark"
 ) {
 
-    document.body.classList.add("dark");
+    document.body.classList.add(
+        "dark"
+    );
 }
 
 
-/* ==============================
-   CLEAR CHATS
-============================== */
+/* =====================================
+   CLEAR LOCAL QUERIES
+===================================== */
 
 clearBtn.onclick = () => {
 
@@ -409,24 +829,31 @@ clearBtn.onclick = () => {
 
     currentConversationId = null;
 
+
     localStorage.removeItem(
         "queryx-conversations"
     );
 
-    conversationList.innerHTML = "";
+
+    conversationList.innerHTML =
+        "";
+
 
     chatTitle.textContent =
-        "New Conversation";
+        "New Customer Query";
 
-    conversationIdText.textContent = "";
+
+    conversationIdText.textContent =
+        "Ready to summarize";
+
 
     clearMessages();
 };
 
 
-/* ==============================
+/* =====================================
    EVENTS
-============================== */
+===================================== */
 
 sendBtn.addEventListener(
     "click",
@@ -441,18 +868,28 @@ newChatBtn.addEventListener(
 
 
 messageInput.addEventListener(
+
     "input",
-    autoResize
+
+    () => {
+
+        autoResize();
+
+        updateCharacterCount();
+    }
 );
 
 
 messageInput.addEventListener(
+
     "keydown",
+
     event => {
 
         if (
             event.key === "Enter"
-            && !event.shiftKey
+            &&
+            !event.shiftKey
         ) {
 
             event.preventDefault();
@@ -463,22 +900,46 @@ messageInput.addEventListener(
 );
 
 
-/* ==============================
+/* =====================================
    INITIALIZATION
-============================== */
+===================================== */
 
-if (conversations.length > 0) {
+async function initializeApp() {
 
-    currentConversationId =
-        conversations[0].id;
+    if (
+        conversations.length > 0
+    ) {
 
-    updateHeader(
-        conversations[0]
-    );
+        const conversation =
+            conversations[0];
 
-} else {
 
-    createNewChat();
+        currentConversationId =
+            conversation.id;
+
+
+        updateHeader(
+            conversation
+        );
+
+
+        renderConversationList();
+
+
+        /*
+         Restore messages from MySQL
+        */
+
+        await loadConversation(
+            conversation.id
+        );
+
+
+    } else {
+
+        createNewChat();
+    }
 }
 
-renderConversationList();
+
+initializeApp();

@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QueryX - AI Assistant</title>
+
+    <title>QueryX | Customer Query Summarizer</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -11,44 +14,78 @@
 
 <div class="app">
 
-    <!-- SIDEBAR -->
+    <!-- ================= SIDEBAR ================= -->
+
     <aside class="sidebar">
 
         <div class="brand">
-            <div class="logo">Q</div>
 
-            <div>
-                <h2>Query<span>X</span></h2>
-                <p>Your AI Assistant</p>
+            <div class="brand-logo">
+                Q
             </div>
+
+            <div class="brand-text">
+                <h2>Query<span>X</span></h2>
+                <p>Support Assistant</p>
+            </div>
+
         </div>
 
-        <button class="new-chat" id="newChatBtn">
-            + New Chat
+
+        <button
+                class="new-chat-btn"
+                id="newChatBtn">
+
+            <span>＋</span>
+            New Query
+
         </button>
 
-        <p class="section-title">Conversations</p>
 
-        <div class="conversation-list" id="conversationList">
+        <div class="sidebar-heading">
+            Recent Queries
         </div>
+
+
+        <div
+                class="conversation-list"
+                id="conversationList">
+        </div>
+
 
         <div class="sidebar-bottom">
 
-            <button class="sidebar-action" id="themeBtn">
-                ☀ Toggle Theme
+            <button
+                    class="sidebar-option"
+                    id="themeBtn">
+
+                ◐
+                <span>Toggle Theme</span>
+
             </button>
 
-            <button class="sidebar-action" id="clearBtn">
-                🗑 Clear All Chats
+
+            <button
+                    class="sidebar-option"
+                    id="clearBtn">
+
+                🗑
+                <span>Clear Queries</span>
+
             </button>
+
 
             <div class="profile">
-                <div class="avatar">N</div>
+
+                <div class="profile-avatar">
+                    N
+                </div>
 
                 <div>
                     <strong>Nikhil</strong>
-                    <p>QueryX User</p>
+                    <p>Support Executive</p>
                 </div>
+
             </div>
 
         </div>
@@ -56,43 +93,145 @@
     </aside>
 
 
-    <!-- MAIN CHAT -->
-    <main class="chat-area">
+    <!-- ================= MAIN ================= -->
 
-        <header class="chat-header">
+    <main class="main">
+
+        <!-- HEADER -->
+
+        <header class="header">
+
             <div>
-                <h3 id="chatTitle">New Conversation</h3>
-                <p id="conversationIdText"></p>
+
+                <h3 id="chatTitle">
+                    New Customer Query
+                </h3>
+
+                <p id="conversationIdText">
+                    Ready to summarize
+                </p>
+
             </div>
+
+
+            <div class="status">
+
+                <span class="status-dot"></span>
+
+                AI Online
+
+            </div>
+
         </header>
 
 
-        <!-- MESSAGES -->
-        <section class="messages" id="messages">
+        <!-- ================= CHAT ================= -->
 
-            <div class="welcome" id="welcome">
-                <div class="welcome-logo">Q</div>
+        <section
+                class="messages"
+                id="messages">
 
-                <h1>Welcome to QueryX</h1>
+
+            <!-- WELCOME -->
+
+            <div
+                    class="welcome"
+                    id="welcome">
+
+                <div class="welcome-icon">
+                    Q
+                </div>
+
+
+                <h1>
+                    Customer Query Summarizer
+                </h1>
+
 
                 <p>
-                    Your intelligent AI assistant.
-                    Ask me anything.
+                    Paste a customer's food delivery query
+                    and QueryX will generate a short,
+                    clear support summary.
                 </p>
 
-                <div class="suggestions">
 
-                    <button onclick="useSuggestion('Explain Spring AI in simple words')">
-                        Explain Spring AI
+                <div class="feature-cards">
+
+
+                    <button
+                            class="feature-card"
+                            onclick="useSuggestion(
+                            'My order was supposed to arrive 45 minutes ago but it is still showing preparing and I cannot contact the delivery partner.'
+                            )">
+
+                        <span class="feature-icon">
+                            ⏱
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Delayed Order
+                            </strong>
+
+                            <small>
+                                Try an example
+                            </small>
+
+                        </div>
+
                     </button>
 
-                    <button onclick="useSuggestion('What is RAG?')">
-                        What is RAG?
+
+                    <button
+                            class="feature-card"
+                            onclick="useSuggestion(
+                            'I ordered two burgers and fries but received only one burger and the fries are missing.'
+                            )">
+
+                        <span class="feature-icon">
+                            🍔
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Missing Items
+                            </strong>
+
+                            <small>
+                                Try an example
+                            </small>
+
+                        </div>
+
                     </button>
 
-                    <button onclick="useSuggestion('Explain Java dependency injection')">
-                        Java Help
+
+                    <button
+                            class="feature-card"
+                            onclick="useSuggestion(
+                            'My payment was deducted but the order failed and I have not received my refund yet.'
+                            )">
+
+                        <span class="feature-icon">
+                            ₹
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Payment Issue
+                            </strong>
+
+                            <small>
+                                Try an example
+                            </small>
+
+                        </div>
+
                     </button>
+
 
                 </div>
 
@@ -101,25 +240,54 @@
         </section>
 
 
-        <!-- INPUT -->
-        <div class="input-wrapper">
+        <!-- ================= INPUT ================= -->
 
-            <div class="input-box">
+        <div class="composer-container">
+
+            <div class="composer-label">
+
+                <span>
+                    Customer Query
+                </span>
+
+                <span id="characterCount">
+                    0 characters
+                </span>
+
+            </div>
+
+
+            <div class="composer">
 
                 <textarea
                         id="messageInput"
-                        placeholder="Type your message..."
-                        rows="1"></textarea>
+                        rows="1"
+                        maxlength="5000"
+                        placeholder="Paste or type the customer's query here..."></textarea>
 
-                <button id="sendBtn">
+
+                <button
+                        id="sendBtn"
+                        title="Summarize">
+
                     ➤
+
                 </button>
 
             </div>
 
-            <p class="input-hint">
-                Enter to send · Shift + Enter for new line
-            </p>
+
+            <div class="composer-footer">
+
+                <span>
+                    QueryX generates concise AI summaries.
+                </span>
+
+                <span>
+                    Enter to summarize · Shift + Enter for new line
+                </span>
+
+            </div>
 
         </div>
 
@@ -127,7 +295,9 @@
 
 </div>
 
+
 <script src="script.js"></script>
 
 </body>
+
 </html>

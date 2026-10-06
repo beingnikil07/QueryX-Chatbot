@@ -90,4 +90,9 @@ public class SummaryService {
         return response;
     }
 
+
+    public List<ChatMessage> getConversationHistory(String conversationId) {
+        return chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+    }
+
 }
